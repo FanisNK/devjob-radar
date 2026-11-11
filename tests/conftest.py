@@ -6,9 +6,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, delete
 from sqlalchemy.orm import sessionmaker
 
-from app.core.database import Base, get_db
+from app.core.database import get_db
+from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models.job import Job
+from app.models.user import User
 
 
 # Load test database settings from the .env.test file.
@@ -42,9 +44,6 @@ def override_get_db():
         db.close()
 
 
-# Create all database tables before running tests.
-Base.metadata.create_all(bind=test_engine)
-
 # Tell FastAPI to use the test database instead of the main database.
 app.dependency_overrides[get_db] = override_get_db
 
@@ -56,14 +55,89 @@ def client():
         yield test_client
 
 
-# Create a test job before a test and delete it after the test.
+# Create a test user before each test.
 @pytest.fixture
-def sample_job():
+def test_user():
     db = TestingSessionLocal()
 
     try:
-        # Create a test job with sample data.
+        user = User(
+            email="test@example.com",
+            hashed_password=hash_password("TestPassword123"),
+            is_active=True,
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        yield user
+
+    finally:
+        db.close()
+
+
+
+# Create a second test user.
+@pytest.fixture
+def second_user():
+    db = TestingSessionLocal()
+
+    try:
+        user = User(
+            email="second@example.com",
+            hashed_password=hash_password("SecondPassword123"),
+            is_active=True,
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        yield user
+
+    finally:
+        db.rollback()
+        db.close()
+
+
+
+# Create an access token for the second test user.
+@pytest.fixture
+def second_user_auth_headers(second_user):
+    access_token = create_access_token(
+        data={"sub": str(second_user.id)}
+    )
+
+    return {"Authorization": f"Bearer {access_token}"}
+
+
+
+# Create an access token for the test user.
+@pytest.fixture
+def auth_headers(test_user):
+    access_token = create_access_token(
+        data={"sub": str(test_user.id)}
+    )
+
+    return {"Authorization": f"Bearer {access_token}"}
+
+
+# Create a test client with authentication enabled.
+@pytest.fixture
+def authenticated_client(client, auth_headers):
+    client.headers.update(auth_headers)
+    return client
+
+
+# Create a test job before a test and delete it after the test.
+@pytest.fixture
+def sample_job(test_user):
+    db = TestingSessionLocal()
+
+    try:
         job = Job(
+            user_id=test_user.id,
             title="Test Python Developer",
             company="Test Company",
             description="A test job description",
@@ -75,29 +149,23 @@ def sample_job():
         db.add(job)
         db.commit()
         db.refresh(job)
-        job_id = job.id
 
         yield job
 
     finally:
-      # Delete the test job if it still exists in the database.
-      if "job_id" in locals():
         db.rollback()
-        db.execute(delete(Job).where(Job.id == job_id))
-        db.commit()
-
-      db.close()
+        db.close()
 
 
 # Clean the test database before and after each test.
 @pytest.fixture(autouse=True)
 def clean_test_database():
-    # Remove existing test jobs before the test starts.
     with test_engine.begin() as connection:
         connection.execute(delete(Job))
+        connection.execute(delete(User))
 
     yield
 
-    # Remove all test jobs after the test finishes.
     with test_engine.begin() as connection:
         connection.execute(delete(Job))
+        connection.execute(delete(User))

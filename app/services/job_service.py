@@ -7,9 +7,14 @@ from app.schemas.job import JobCreate
 
 
 # Create a new job in the database.
-# The function receives validated data and saves it as a Job object.
-def create_job(db: Session, job_data: JobCreate) -> Job:
+# The function receives validated data and the owner's ID.
+def create_job(
+    db: Session,
+    job_data: JobCreate,
+    user_id: int,
+) -> Job:
     new_job = Job(
+        user_id=user_id,
         title=job_data.title,
         company=job_data.company,
         description=job_data.description,
@@ -38,20 +43,40 @@ def create_job(db: Session, job_data: JobCreate) -> Job:
     return new_job
 
 
-# Retrieve all jobs from the database.
+
+# Retrieve jobs belonging to a specific user with pagination.
 # The newest jobs will appear first.
-def get_jobs(db: Session) -> list[Job]:
-    statement = select(Job).order_by(Job.created_at.desc())
+def get_jobs(
+    db: Session,
+    user_id: int,
+    skip: int = 0,
+    limit: int = 10,
+) -> list[Job]:
+    statement = (
+        select(Job)
+        .where(Job.user_id == user_id)
+        .order_by(Job.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
 
     result = db.execute(statement)
 
     return list(result.scalars().all())
 
 
-# Retrieve a single job by its ID.
-# Return None if the requested job does not exist.
-def get_job_by_id(db: Session, job_id: int) -> Job | None:
-    statement = select(Job).where(Job.id == job_id)
+
+# Retrieve a job belonging to a specific user.
+# Return None if the job does not exist or belongs to another user.
+def get_job_by_id(
+    db: Session,
+    job_id: int,
+    user_id: int,
+) -> Job | None:
+    statement = select(Job).where(
+        Job.id == job_id,
+        Job.user_id == user_id,
+    )
 
     result = db.execute(statement)
 

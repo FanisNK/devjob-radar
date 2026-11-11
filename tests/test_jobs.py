@@ -1,6 +1,6 @@
 # Test that the API returns a list of jobs.
-def test_read_jobs(client):
-    response = client.get("/api/v1/jobs/")
+def test_read_jobs(authenticated_client):
+    response = authenticated_client.get("/api/v1/jobs/")
 
     # Check that the request was successful.
     assert response.status_code == 200
@@ -9,9 +9,56 @@ def test_read_jobs(client):
     assert isinstance(response.json(), list)
 
 
+# Test that the API respects the pagination limit.
+def test_read_jobs_with_limit(authenticated_client, sample_job):
+    response = authenticated_client.get(
+        "/api/v1/jobs/?limit=2"
+    )
+
+    # Check that the request was successful.
+    assert response.status_code == 200
+
+    # Check that no more than two jobs are returned.
+    assert len(response.json()) <= 2
+
+
+# Test that the API skips the requested number of jobs.
+def test_read_jobs_with_skip(authenticated_client):
+    # Create three jobs for the test.
+    for number in range(3):
+        job_data = {
+            "title": f"Python Developer {number}",
+            "company": "Test Company",
+            "description": "Test job description",
+            "salary_min": 2000,
+            "salary_max": 3000,
+            "url": f"https://example.com/jobs/skip-test-{number}",
+        }
+
+        response = authenticated_client.post(
+            "/api/v1/jobs/",
+            json=job_data,
+        )
+
+        # Check that the job was created successfully.
+        assert response.status_code == 201
+
+    # Request jobs while skipping the first two.
+    response = authenticated_client.get(
+        "/api/v1/jobs/?skip=2&limit=10"
+    )
+
+    # Check that the request was successful.
+    assert response.status_code == 200
+
+    # Check that only one job remains.
+    assert len(response.json()) == 1
+    assert response.json()[0]["title"] == "Python Developer 0"
+
+
 # Test that the API returns a specific job by its ID.
-def test_read_job(client, sample_job):
-    response = client.get(f"/api/v1/jobs/{sample_job.id}")
+def test_read_job(authenticated_client, sample_job):
+    response = authenticated_client.get(f"/api/v1/jobs/{sample_job.id}")
 
     # Check that the request was successful.
     assert response.status_code == 200
@@ -27,8 +74,8 @@ def test_read_job(client, sample_job):
 
 
 # Test that the API returns 404 for a job that does not exist.
-def test_read_nonexistent_job(client):
-    response = client.get("/api/v1/jobs/999999")
+def test_read_nonexistent_job(authenticated_client):
+    response = authenticated_client.get("/api/v1/jobs/999999")
 
     # Check that the API returns a 404 status code.
     assert response.status_code == 404
@@ -38,7 +85,7 @@ def test_read_nonexistent_job(client):
 
 
 # Test that the API creates a new job successfully.
-def test_create_job(client):
+def test_create_job(authenticated_client):
     job_data = {
         "title": "Junior Python Backend Developer",
         "company": "Test API Company",
@@ -49,7 +96,7 @@ def test_create_job(client):
     }
 
     # Send a POST request with the job data.
-    response = client.post("/api/v1/jobs/", json=job_data)
+    response = authenticated_client.post("/api/v1/jobs/", json=job_data)
 
     # Check that the API returns 201 Created.
     assert response.status_code == 201
@@ -69,7 +116,7 @@ def test_create_job(client):
 
 
 # Test that the API updates an existing job successfully.
-def test_update_job(client, sample_job):
+def test_update_job(authenticated_client, sample_job):
     update_data = {
         "title": "Updated Python Backend Developer",
         "company": "Updated Test Company",
@@ -80,7 +127,7 @@ def test_update_job(client, sample_job):
     }
 
     # Send a PUT request with the updated job data.
-    response = client.put(
+    response = authenticated_client.put(
         f"/api/v1/jobs/{sample_job.id}",
         json=update_data,
     )
@@ -100,24 +147,24 @@ def test_update_job(client, sample_job):
 
 
 # Test that the API deletes an existing job successfully.
-def test_delete_job(client, sample_job):
+def test_delete_job(authenticated_client, sample_job):
     job_id = sample_job.id
 
     # Send a DELETE request for the test job.
-    response = client.delete(f"/api/v1/jobs/{job_id}")
+    response = authenticated_client.delete(f"/api/v1/jobs/{job_id}")
 
     # Check that the API returns 204 No Content.
     assert response.status_code == 204
 
     # Check that the deleted job is no longer available.
-    response = client.get(f"/api/v1/jobs/{job_id}")
+    response = authenticated_client.get(f"/api/v1/jobs/{job_id}")
 
     # Check that the API returns 404 Not Found.
     assert response.status_code == 404
 
 
 # Test that the API rejects a job with a duplicate URL.
-def test_create_job_with_duplicate_url(client, sample_job):
+def test_create_job_with_duplicate_url(authenticated_client, sample_job):
     # Prepare job data using an existing job URL.
     job_data = {
         "title": "Another Python Developer",
@@ -129,7 +176,7 @@ def test_create_job_with_duplicate_url(client, sample_job):
     }
 
     # Send a POST request with the duplicate URL.
-    response = client.post("/api/v1/jobs/", json=job_data)
+    response = authenticated_client.post("/api/v1/jobs/", json=job_data)
 
     # Check that the API returns 409 Conflict.
     assert response.status_code == 409
@@ -139,7 +186,7 @@ def test_create_job_with_duplicate_url(client, sample_job):
 
 
 # Test that the API rejects invalid salary values.
-def test_create_job_with_invalid_salary(client):
+def test_create_job_with_invalid_salary(authenticated_client):
     # Prepare job data where the minimum salary exceeds the maximum.
     job_data = {
         "title": "Python Backend Developer",
@@ -151,14 +198,14 @@ def test_create_job_with_invalid_salary(client):
     }
 
     # Send a POST request with invalid salary values.
-    response = client.post("/api/v1/jobs/", json=job_data)
+    response = authenticated_client.post("/api/v1/jobs/", json=job_data)
 
     # Check that the API returns 422 Unprocessable Entity.
     assert response.status_code == 422
 
 
 # Test that the API returns 404 when updating a nonexistent job.
-def test_update_nonexistent_job(client):
+def test_update_nonexistent_job(authenticated_client):
     # Prepare updated job data.
     job_data = {
         "title": "Python Backend Developer",
@@ -170,19 +217,37 @@ def test_update_nonexistent_job(client):
     }
 
     # Send a PUT request for a nonexistent job.
-    response = client.put("/api/v1/jobs/999999", json=job_data)
+    response = authenticated_client.put("/api/v1/jobs/999999", json=job_data)
 
     # Check that the API returns 404 Not Found.
     assert response.status_code == 404
 
 
 # Test that the API returns 404 when deleting a nonexistent job.
-def test_delete_nonexistent_job(client):
+def test_delete_nonexistent_job(authenticated_client):
     # Send a DELETE request for a nonexistent job.
-    response = client.delete("/api/v1/jobs/999999")
+    response = authenticated_client.delete("/api/v1/jobs/999999")
 
     # Check that the API returns 404 Not Found.
     assert response.status_code == 404
 
     # Check the error message.
+    assert response.json()["detail"] == "Job not found"
+
+
+
+# Test that a user cannot access another user's job.
+def test_user_cannot_access_another_users_job(
+    client,
+    sample_job,
+    second_user_auth_headers,
+):
+    # Send a request using the second user's access token.
+    response = client.get(
+        f"/api/v1/jobs/{sample_job.id}",
+        headers=second_user_auth_headers,
+    )
+
+    # Check that access to another user's job is denied.
+    assert response.status_code == 404
     assert response.json()["detail"] == "Job not found"

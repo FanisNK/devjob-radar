@@ -105,11 +105,17 @@ def update_application_endpoint(
       detail="Application not found",
     )
 
-  return application_service.update_application(
-    db=db,
-    application=application,
-    application_data=application_data,
-  )
+  try:
+    return application_service.update_application(
+      db=db,
+      application=application,
+      application_data=application_data,
+    )
+  except ValueError as error:
+    raise HTTPException(
+      status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+      detail=str(error),
+    )
 
 
 @router.delete(

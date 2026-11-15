@@ -80,6 +80,10 @@ def update_application(
   # Get only the fields provided in the request.
   update_data = application_data.model_dump(exclude_unset=True)
 
+  # Validate the application status.
+  if "status" in update_data and update_data["status"] is None:
+    raise ValueError("Status cannot be null")
+
   # Update the application fields.
   for field, value in update_data.items():
     if value is not None or field == "notes":

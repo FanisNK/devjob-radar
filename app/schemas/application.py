@@ -1,6 +1,14 @@
 from datetime import datetime
+from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
+
+
+class ApplicationStatus(str, Enum):
+    APPLIED = "applied"
+    INTERVIEW = "interview"
+    REJECTED = "rejected"
+    ACCEPTED = "accepted"
 
 
 class ApplicationCreate(BaseModel):
@@ -9,10 +17,7 @@ class ApplicationCreate(BaseModel):
 
 
 class ApplicationUpdate(BaseModel):
-    status: str | None = Field(
-        default=None,
-        max_length=50,
-    )
+    status: ApplicationStatus | None = None
     notes: str | None = None
 
 

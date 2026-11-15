@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_create_application(authenticated_client, sample_job):
   response = authenticated_client.post(
     "/api/v1/applications/",
@@ -225,3 +228,72 @@ def test_user_cannot_delete_another_users_application(
   )
 
   assert owner_response.status_code == 200
+
+
+def test_update_application_with_invalid_status(
+        authenticated_client,
+        sample_job,
+):
+  # Create an application.
+  create_response = authenticated_client.post(
+    "/api/v1/applications/",
+    json={"job_id": sample_job.id},
+  )
+
+  application_id = create_response.json()["id"]
+
+  # Try to update the application with an invalid status.
+  response = authenticated_client.put(
+    f"/api/v1/applications/{application_id}",
+    json={"status": "banana"},
+  )
+
+  assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+  "valid_status",
+  ["applied", "interview", "rejected", "accepted"],
+)
+def test_update_application_with_valid_status(
+        authenticated_client,
+        sample_job,
+        valid_status,
+):
+  # Create an application.
+  create_response = authenticated_client.post(
+    "/api/v1/applications/",
+    json={"job_id": sample_job.id},
+  )
+
+  application_id = create_response.json()["id"]
+
+  # Update the application with a valid status.
+  response = authenticated_client.put(
+    f"/api/v1/applications/{application_id}",
+    json={"status": valid_status},
+  )
+
+  assert response.status_code == 200
+  assert response.json()["status"] == valid_status
+
+
+def test_update_application_with_null_status(
+        authenticated_client,
+        sample_job,
+):
+  # Create an application.
+  create_response = authenticated_client.post(
+    "/api/v1/applications/",
+    json={"job_id": sample_job.id},
+  )
+
+  application_id = create_response.json()["id"]
+
+  # Try to update the application with a null status.
+  response = authenticated_client.put(
+    f"/api/v1/applications/{application_id}",
+    json={"status": None},
+  )
+
+  assert response.status_code == 422

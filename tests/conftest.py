@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.database import get_db
 from app.core.security import create_access_token, hash_password
 from app.main import app
+from app.models.application import Application
 from app.models.job import Job
 from app.models.user import User
 
@@ -161,11 +162,13 @@ def sample_job(test_user):
 @pytest.fixture(autouse=True)
 def clean_test_database():
     with test_engine.begin() as connection:
+        connection.execute(delete(Application))
         connection.execute(delete(Job))
         connection.execute(delete(User))
 
     yield
 
     with test_engine.begin() as connection:
+        connection.execute(delete(Application))
         connection.execute(delete(Job))
         connection.execute(delete(User))

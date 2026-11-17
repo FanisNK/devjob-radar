@@ -235,7 +235,6 @@ def test_delete_nonexistent_job(authenticated_client):
     assert response.json()["detail"] == "Job not found"
 
 
-
 # Test that a user cannot access another user's job.
 def test_user_cannot_access_another_users_job(
     client,
@@ -251,3 +250,65 @@ def test_user_cannot_access_another_users_job(
     # Check that access to another user's job is denied.
     assert response.status_code == 404
     assert response.json()["detail"] == "Job not found"
+
+
+# Test that the API finds jobs by title.
+def test_search_jobs_by_title(authenticated_client):
+    job_data = {
+        "title": "Python Backend Developer",
+        "company": "Test Company",
+        "description": "Python backend job",
+        "salary_min": 2000,
+        "salary_max": 3500,
+        "url": "https://example.com/jobs/search-python",
+    }
+
+    # Create a job for the search test.
+    create_response = authenticated_client.post(
+        "/api/v1/jobs/",
+        json=job_data,
+    )
+
+    assert create_response.status_code == 201
+
+    # Search for jobs containing "python" in the title.
+    response = authenticated_client.get(
+        "/api/v1/jobs/?search=python"
+    )
+
+    assert response.status_code == 200
+
+    jobs = response.json()
+
+    # Check that the expected job was found.
+    assert len(jobs) == 1
+    assert jobs[0]["title"] == "Python Backend Developer"
+
+
+# Test that the API returns an empty list when no jobs match.
+def test_search_jobs_no_matches(authenticated_client, sample_job):
+    response = authenticated_client.get(
+        "/api/v1/jobs/?search=java"
+    )
+
+    # Check that the request was successful.
+    assert response.status_code == 200
+
+    # Check that no jobs were found.
+    assert response.json() == []
+
+
+# Test that job search is case-insensitive.
+def test_search_jobs_case_insensitive(authenticated_client, sample_job):
+    response = authenticated_client.get(
+        "/api/v1/jobs/?search=PYTHON"
+    )
+
+    # Check that the request was successful.
+    assert response.status_code == 200
+
+    jobs = response.json()
+
+    # Check that the job was found regardless of letter case.
+    assert len(jobs) == 1
+    assert jobs[0]["title"] == "Test Python Developer"

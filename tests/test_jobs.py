@@ -426,3 +426,67 @@ def test_search_jobs_by_location(authenticated_client):
 
     assert len(jobs) == 1
     assert jobs[0]["location"] == "Tallinn, Estonia"
+
+
+# Test that jobs matching the desired salary range are returned.
+def test_search_jobs_by_salary_range(authenticated_client):
+    job_data = {
+        "title": "Python Backend Developer",
+        "company": "Salary Test Company",
+        "description": "Backend developer position",
+        "salary_min": 4000,
+        "salary_max": 6000,
+        "url": "https://example.com/jobs/salary-range-test",
+    }
+
+    # Create a job with a salary range that overlaps the desired range.
+    create_response = authenticated_client.post(
+        "/api/v1/jobs/",
+        json=job_data,
+    )
+
+    assert create_response.status_code == 201
+
+    # Search for jobs with the desired salary range.
+    response = authenticated_client.get(
+        "/api/v1/jobs/?min_salary=5000&max_salary=7000"
+    )
+
+    assert response.status_code == 200
+
+    jobs = response.json()
+
+    # Check that the matching job was returned.
+    assert len(jobs) == 1
+    assert jobs[0]["salary_min"] == 4000
+    assert jobs[0]["salary_max"] == 6000
+
+
+# Test that jobs outside the desired salary range are excluded.
+def test_search_jobs_by_salary_no_matches(authenticated_client):
+    job_data = {
+        "title": "Python Backend Developer",
+        "company": "Salary Test Company",
+        "description": "Backend developer position",
+        "salary_min": 2000,
+        "salary_max": 4000,
+        "url": "https://example.com/jobs/salary-no-match-test",
+    }
+
+    # Create a job outside the desired salary range.
+    create_response = authenticated_client.post(
+        "/api/v1/jobs/",
+        json=job_data,
+    )
+
+    assert create_response.status_code == 201
+
+    # Search for jobs with a higher salary range.
+    response = authenticated_client.get(
+        "/api/v1/jobs/?min_salary=5000&max_salary=7000"
+    )
+
+    assert response.status_code == 200
+
+    # Check that no jobs were returned.
+    assert response.json() == []

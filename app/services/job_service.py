@@ -54,7 +54,10 @@ def get_jobs(
           search: str | None = None,
           company: str | None = None,
           location: str | None = None,
+          min_salary: int | None = None,
+          max_salary: int | None = None,
   ) -> list[Job]:
+
   statement = select(Job).where(Job.user_id == user_id)
 
   # Filter jobs by title if search is provided.
@@ -75,6 +78,19 @@ def get_jobs(
       Job.location.ilike(f"%{location}%")
     )
 
+  # Filter jobs by minimum desired salary.
+  if min_salary is not None:
+    statement = statement.where(
+      Job.salary_max >= min_salary
+    )
+
+  # Filter jobs by maximum desired salary.
+  if max_salary is not None:
+    statement = statement.where(
+      Job.salary_min <= max_salary
+    )
+
+  # Sort jobs and apply pagination.
   statement = (
     statement
     .order_by(Job.created_at.desc())

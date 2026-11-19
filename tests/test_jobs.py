@@ -395,3 +395,34 @@ def test_search_jobs_by_title_and_company(authenticated_client):
     assert len(jobs) == 1
     assert jobs[0]["title"] == "Python Backend Developer"
     assert jobs[0]["company"] == "Google Estonia"
+
+
+# Test that the API finds jobs by location.
+def test_search_jobs_by_location(authenticated_client):
+    job_data = {
+        "title": "Python Backend Developer",
+        "company": "Google Estonia",
+        "location": "Tallinn, Estonia",
+        "description": "Backend developer position",
+        "salary_min": 2500,
+        "salary_max": 4000,
+        "url": "https://example.com/jobs/search-location",
+    }
+
+    create_response = authenticated_client.post(
+        "/api/v1/jobs/",
+        json=job_data,
+    )
+
+    assert create_response.status_code == 201
+
+    response = authenticated_client.get(
+        "/api/v1/jobs/?location=Tallinn"
+    )
+
+    assert response.status_code == 200
+
+    jobs = response.json()
+
+    assert len(jobs) == 1
+    assert jobs[0]["location"] == "Tallinn, Estonia"

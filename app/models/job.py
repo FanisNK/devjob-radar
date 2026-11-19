@@ -29,6 +29,11 @@ class Job(Base):
         nullable=False,
     )
 
+    location: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
     description: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,

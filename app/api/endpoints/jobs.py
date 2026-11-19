@@ -43,6 +43,7 @@ def read_jobs(
     limit: int = Query(default=10, ge=1, le=100),
     search: str | None = Query(default=None),
     company: str | None = Query(default=None),
+    location: str | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -53,6 +54,7 @@ def read_jobs(
         limit=limit,
         search=search,
         company=company,
+        location=location,
     )
 
 

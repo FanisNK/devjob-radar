@@ -17,6 +17,7 @@ def create_job(
     user_id=user_id,
     title=job_data.title,
     company=job_data.company,
+    location=job_data.location,
     description=job_data.description,
     salary_min=job_data.salary_min,
     salary_max=job_data.salary_max,
@@ -46,13 +47,14 @@ def create_job(
 # Retrieve jobs belonging to a specific user with pagination.
 # The newest jobs will appear first.
 def get_jobs(
-        db: Session,
-        user_id: int,
-        skip: int = 0,
-        limit: int = 10,
-        search: str | None = None,
-        company: str | None = None,
-) -> list[Job]:
+          db: Session,
+          user_id: int,
+          skip: int = 0,
+          limit: int = 10,
+          search: str | None = None,
+          company: str | None = None,
+          location: str | None = None,
+  ) -> list[Job]:
   statement = select(Job).where(Job.user_id == user_id)
 
   # Filter jobs by title if search is provided.
@@ -65,6 +67,12 @@ def get_jobs(
   if company:
     statement = statement.where(
       Job.company.ilike(f"%{company}%")
+    )
+
+  # Filter jobs by location if provided.
+  if location:
+    statement = statement.where(
+      Job.location.ilike(f"%{location}%")
     )
 
   statement = (
@@ -106,6 +114,7 @@ def update_job(
   # Update the job fields with the new values.
   job.title = job_data.title
   job.company = job_data.company
+  job.location = job_data.location
   job.description = job_data.description
   job.salary_min = job_data.salary_min
   job.salary_max = job_data.salary_max

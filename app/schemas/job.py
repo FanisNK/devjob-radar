@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class JobCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     company: str = Field(min_length=1, max_length=255)
+    location: str | None = Field(default=None, max_length=255)
     description: str | None = None
     salary_min: int | None = Field(default=None, ge=0)
     salary_max: int | None = Field(default=None, ge=0)
@@ -34,11 +35,11 @@ class JobResponse(BaseModel):
     id: int
     title: str
     company: str
+    location: str | None
     description: str | None
     salary_min: int | None
     salary_max: int | None
     url: str
     created_at: datetime
 
-    # Allow Pydantic to read data directly from SQLAlchemy objects.
     model_config = ConfigDict(from_attributes=True)

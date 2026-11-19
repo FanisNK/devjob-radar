@@ -46,31 +46,37 @@ def create_job(
 # Retrieve jobs belonging to a specific user with pagination.
 # The newest jobs will appear first.
 def get_jobs(
-          db: Session,
-          user_id: int,
-          skip: int = 0,
-          limit: int = 10,
-          search: str | None = None,
-  ) -> list[Job]:
+        db: Session,
+        user_id: int,
+        skip: int = 0,
+        limit: int = 10,
+        search: str | None = None,
+        company: str | None = None,
+) -> list[Job]:
+  statement = select(Job).where(Job.user_id == user_id)
 
-    statement = select(Job).where(Job.user_id == user_id)
-
-    # Filter jobs by title if search is provided.
-    if search:
-      statement = statement.where(
-        Job.title.ilike(f"%{search}%")
-      )
-
-    statement = (
-      statement
-      .order_by(Job.created_at.desc())
-      .offset(skip)
-      .limit(limit)
+  # Filter jobs by title if search is provided.
+  if search:
+    statement = statement.where(
+      Job.title.ilike(f"%{search}%")
     )
 
-    result = db.execute(statement)
+  # Filter jobs by company if provided.
+  if company:
+    statement = statement.where(
+      Job.company.ilike(f"%{company}%")
+    )
 
-    return list(result.scalars().all())
+  statement = (
+    statement
+    .order_by(Job.created_at.desc())
+    .offset(skip)
+    .limit(limit)
+  )
+
+  result = db.execute(statement)
+
+  return list(result.scalars().all())
 
 
 # Retrieve a job belonging to a specific user.

@@ -312,3 +312,86 @@ def test_search_jobs_case_insensitive(authenticated_client, sample_job):
     # Check that the job was found regardless of letter case.
     assert len(jobs) == 1
     assert jobs[0]["title"] == "Test Python Developer"
+
+
+# Test that the API finds jobs by company name.
+def test_search_jobs_by_company(authenticated_client):
+    job_data = {
+        "title": "Python Backend Developer",
+        "company": "Google Estonia",
+        "description": "Backend developer position",
+        "salary_min": 2500,
+        "salary_max": 4000,
+        "url": "https://example.com/jobs/search-google",
+    }
+
+    # Create a job for the search test.
+    create_response = authenticated_client.post(
+        "/api/v1/jobs/",
+        json=job_data,
+    )
+
+    assert create_response.status_code == 201
+
+    # Search for jobs by company name.
+    response = authenticated_client.get(
+        "/api/v1/jobs/?company=Google"
+    )
+
+    assert response.status_code == 200
+
+    jobs = response.json()
+
+    # Check that the expected job was found.
+    assert len(jobs) == 1
+    assert jobs[0]["company"] == "Google Estonia"
+
+
+# Test that the API returns an empty list when no company matches.
+def test_search_jobs_by_company_no_matches(
+    authenticated_client,
+    sample_job,
+):
+    response = authenticated_client.get(
+        "/api/v1/jobs/?company=Google"
+    )
+
+    # Check that the request was successful.
+    assert response.status_code == 200
+
+    # Check that no jobs were found.
+    assert response.json() == []
+
+
+# Test that title and company filters work together.
+def test_search_jobs_by_title_and_company(authenticated_client):
+    job_data = {
+        "title": "Python Backend Developer",
+        "company": "Google Estonia",
+        "description": "Backend developer position",
+        "salary_min": 2500,
+        "salary_max": 4000,
+        "url": "https://example.com/jobs/search-google-python",
+    }
+
+    # Create a job for the search test.
+    create_response = authenticated_client.post(
+        "/api/v1/jobs/",
+        json=job_data,
+    )
+
+    assert create_response.status_code == 201
+
+    # Search by title and company simultaneously.
+    response = authenticated_client.get(
+        "/api/v1/jobs/?search=Python&company=Google"
+    )
+
+    assert response.status_code == 200
+
+    jobs = response.json()
+
+    # Check that exactly one matching job was found.
+    assert len(jobs) == 1
+    assert jobs[0]["title"] == "Python Backend Developer"
+    assert jobs[0]["company"] == "Google Estonia"

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from typing import Literal
 
 from app.core.database import get_db
 from app.schemas.job import JobCreate, JobResponse
@@ -46,6 +47,9 @@ def read_jobs(
     location: str | None = Query(default=None),
     min_salary: int | None = Query(default=None, ge=0),
     max_salary: int | None = Query(default=None, ge=0),
+    sort_by: Literal["created_at", "salary_desc", "salary_asc"] = Query(
+        default="created_at"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -59,6 +63,7 @@ def read_jobs(
         location=location,
         min_salary=min_salary,
         max_salary=max_salary,
+        sort_by=sort_by,
     )
 
 

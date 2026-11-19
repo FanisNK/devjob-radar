@@ -49,6 +49,7 @@ def create_job(
 def get_jobs(
           db: Session,
           user_id: int,
+          sort_by: str = "created_at",
           skip: int = 0,
           limit: int = 10,
           search: str | None = None,
@@ -90,10 +91,19 @@ def get_jobs(
       Job.salary_min <= max_salary
     )
 
-  # Sort jobs and apply pagination.
+  # Sort jobs based on the selected option.
+  if sort_by == "salary_desc":
+    statement = statement.order_by(Job.salary_max.desc().nulls_last())
+
+  elif sort_by == "salary_asc":
+    statement = statement.order_by(Job.salary_min.asc().nulls_last())
+
+  else:
+    statement = statement.order_by(Job.created_at.desc())
+
+  # Apply pagination.
   statement = (
     statement
-    .order_by(Job.created_at.desc())
     .offset(skip)
     .limit(limit)
   )

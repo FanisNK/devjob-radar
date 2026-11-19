@@ -490,3 +490,133 @@ def test_search_jobs_by_salary_no_matches(authenticated_client):
 
     # Check that no jobs were returned.
     assert response.json() == []
+
+
+# Test that jobs are sorted by maximum salary in descending order.
+def test_sort_jobs_by_salary_desc(authenticated_client):
+    salaries = [3000, 5000, 4000]
+
+    # Create three jobs with different salary ranges.
+    for number, salary in enumerate(salaries):
+        job_data = {
+            "title": f"Python Developer {number}",
+            "company": "Test Company",
+            "description": "Test job description",
+            "salary_min": salary - 1000,
+            "salary_max": salary,
+            "url": f"https://example.com/jobs/sort-desc-{number}",
+        }
+
+        response = authenticated_client.post(
+            "/api/v1/jobs/",
+            json=job_data,
+        )
+
+        assert response.status_code == 201
+
+    # Request jobs sorted by maximum salary, highest first.
+    response = authenticated_client.get(
+        "/api/v1/jobs/?sort_by=salary_desc"
+    )
+
+    assert response.status_code == 200
+
+    jobs = response.json()
+
+    # Extract maximum salaries from the returned jobs.
+    returned_salaries = [
+        job["salary_max"] for job in jobs
+    ]
+
+    # Check that salaries are sorted from highest to lowest.
+    assert returned_salaries == [5000, 4000, 3000]
+
+
+# Test that jobs are sorted by minimum salary in ascending order.
+def test_sort_jobs_by_salary_asc(authenticated_client):
+    salaries = [4000, 2000, 3000]
+
+    # Create three jobs with different salary ranges.
+    for number, salary in enumerate(salaries):
+        job_data = {
+            "title": f"Python Developer {number}",
+            "company": "Test Company",
+            "description": "Test job description",
+            "salary_min": salary,
+            "salary_max": salary + 1000,
+            "url": f"https://example.com/jobs/sort-asc-{number}",
+        }
+
+        response = authenticated_client.post(
+            "/api/v1/jobs/",
+            json=job_data,
+        )
+
+        assert response.status_code == 201
+
+    # Request jobs sorted by minimum salary, lowest first.
+    response = authenticated_client.get(
+        "/api/v1/jobs/?sort_by=salary_asc"
+    )
+
+    assert response.status_code == 200
+
+    jobs = response.json()
+
+    # Extract minimum salaries from the returned jobs.
+    returned_salaries = [
+        job["salary_min"] for job in jobs
+    ]
+
+    # Check that salaries are sorted from lowest to highest.
+    assert returned_salaries == [2000, 3000, 4000]
+
+
+# Test that jobs are sorted by creation date, newest first.
+def test_sort_jobs_by_created_at(authenticated_client):
+    job_urls = []
+
+    # Create three jobs in sequence.
+    for number in range(3):
+        job_data = {
+            "title": f"Python Developer {number}",
+            "company": "Test Company",
+            "description": "Test job description",
+            "salary_min": 2000,
+            "salary_max": 3000,
+            "url": f"https://example.com/jobs/sort-date-{number}",
+        }
+
+        response = authenticated_client.post(
+            "/api/v1/jobs/",
+            json=job_data,
+        )
+
+        assert response.status_code == 201
+        job_urls.append(response.json()["url"])
+
+    # Request jobs sorted by creation date.
+    response = authenticated_client.get(
+        "/api/v1/jobs/?sort_by=created_at"
+    )
+
+    assert response.status_code == 200
+
+    jobs = response.json()
+
+    # Extract URLs in the returned order.
+    returned_urls = [
+        job["url"] for job in jobs
+    ]
+
+    # The newest job should appear first.
+    assert returned_urls == job_urls[::-1]
+
+
+def test_sort_jobs_with_invalid_sort_by(client, auth_headers):
+    response = client.get(
+        "/api/v1/jobs/?sort_by=banana",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 422
